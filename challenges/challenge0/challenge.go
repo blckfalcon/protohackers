@@ -2,6 +2,7 @@ package challenge0
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"log"
 	"net"
@@ -21,7 +22,7 @@ func (c *Challenge) Name() string {
 }
 
 // Solve implements the solution for the challenge
-func (c *Challenge) Solve() error {
+func (c *Challenge) Solve(ctx context.Context) error {
 	listener, err := net.Listen("tcp4", ":5001")
 	if err != nil {
 		return fmt.Errorf("failed to listen on port 5001: %v", err)
@@ -31,26 +32,39 @@ func (c *Challenge) Solve() error {
 	fmt.Println("Echo server listening on port 5001...")
 	fmt.Println("Press Ctrl+C to stop the server")
 
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	shutdownChan := make(chan os.Signal, 1)
 	signal.Notify(shutdownChan, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
 		for {
-			conn, err := listener.Accept()
-			if err != nil {
-				if opErr, ok := err.(*net.OpError); ok && opErr.Op == "accept" {
-					return
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				conn, err := listener.Accept()
+				if err != nil {
+					if opErr, ok := err.(*net.OpError); ok && opErr.Op == "accept" {
+						return
+					}
+					log.Printf("Error accepting connection: %v", err)
+					continue
 				}
-				log.Printf("Error accepting connection: %v", err)
-				continue
-			}
 
-			go c.handleConnection(conn)
+				go c.handleConnection(conn)
+			}
 		}
 	}()
 
-	<-shutdownChan
-	fmt.Println("\nShutting down echo server...")
+	select {
+	case <-shutdownChan:
+		fmt.Println("\nShutting down echo server...")
+	case <-ctx.Done():
+		fmt.Println("\nContext cancelled, shutting down echo server...")
+	}
+
 	return nil
 }
 

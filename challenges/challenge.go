@@ -1,9 +1,11 @@
 package challenges
 
+import "context"
+
 // Challenge defines the interface that all challenges must implement
 type Challenge interface {
 	Name() string
-	Solve() error
+	Solve(ctx context.Context) error
 }
 
 // Registry holds all registered challenges

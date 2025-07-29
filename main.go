@@ -2,9 +2,12 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 
 	"github.com/blckfalcon/protohackers/challenges"
 	_ "github.com/blckfalcon/protohackers/challenges/challenge0"
@@ -47,7 +50,21 @@ func main() {
 	fmt.Printf("\nRunning Challenge %d: %s\n", challengeID, challenge.Name())
 	fmt.Println("=============================")
 
-	if err := challenge.Solve(); err != nil {
+	// Create a context that can be cancelled with Ctrl+C
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Set up signal handler for graceful shutdown
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		<-sigChan
+		fmt.Println("\nReceived interrupt signal, shutting down...")
+		cancel()
+	}()
+
+	if err := challenge.Solve(ctx); err != nil {
 		fmt.Printf("Error running challenge: %v\n", err)
 	}
 }
