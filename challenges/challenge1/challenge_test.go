@@ -150,44 +150,61 @@ func TestChallenge_Solve(t *testing.T) {
 	}()
 	<-serverReady
 
-	conn, err := net.Dial("tcp", "localhost:5001")
-	if err != nil {
-		t.Fatalf("Failed to connect to server: %v", err)
-	}
-	defer conn.Close()
-
 	tests := []struct {
 		name     string
-		request  string
-		expected string
+		requests []string
+		expected []string
 	}{
 		{
 			name:     "Valid prime number",
-			request:  `{"method":"isPrime","number":7}` + "\n",
-			expected: `{"method":"isPrime","prime":true}` + "\n",
+			requests: []string{`{"method":"isPrime","number":7}` + "\n"},
+			expected: []string{`{"method":"isPrime","prime":true}` + "\n"},
+		},
+		{
+			name: "Multiple Requests per connection",
+			requests: []string{
+				`{"method":"isPrime","number":2}` + "\n",
+				`{"method":"isPrime","number":7919}` + "\n",
+			},
+			expected: []string{
+				`{"method":"isPrime","prime":true}` + "\n",
+				`{"method":"isPrime","prime":true}` + "\n",
+			},
 		},
 		{
 			name:     "Malformed request",
-			request:  `{"method":"invalid","number":7}` + "\n",
-			expected: `{"method":"invalid","prime":false}` + "\n",
+			requests: []string{`{"method":"invalid","number":7}` + "\n"},
+			expected: []string{`{"method":"invalid","prime":false}` + "\n"},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := conn.Write([]byte(tt.request))
+			// Create a new connection for each test case
+			conn, err := net.Dial("tcp", "localhost:5001")
 			if err != nil {
-				t.Fatalf("Failed to write to server: %v", err)
+				t.Fatalf("Failed to connect to server: %v", err)
 			}
-			reader := bufio.NewReader(conn)
-			response, err := reader.ReadString('\n')
-			if err != nil {
-				t.Fatalf("Failed to read from server: %v", err)
-			}
-			if response != tt.expected {
-				t.Errorf("Expected response %q, got %q", tt.expected, response)
-			}
+			defer conn.Close()
 
+			reader := bufio.NewReader(conn)
+
+			// Send all requests and collect responses
+			for i, request := range tt.requests {
+				_, err := conn.Write([]byte(request))
+				if err != nil {
+					t.Fatalf("Failed to write to server: %v", err)
+				}
+
+				response, err := reader.ReadString('\n')
+				if err != nil {
+					t.Fatalf("Failed to read from server: %v", err)
+				}
+
+				if response != tt.expected[i] {
+					t.Errorf("Expected response %q, got %q", tt.expected[i], response)
+				}
+			}
 		})
 	}
 }
