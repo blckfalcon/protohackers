@@ -13,6 +13,7 @@ import (
 	_ "github.com/blckfalcon/protohackers/challenges/challenge0"
 	_ "github.com/blckfalcon/protohackers/challenges/challenge1"
 	_ "github.com/blckfalcon/protohackers/challenges/challenge2"
+	_ "github.com/blckfalcon/protohackers/challenges/challenge3"
 )
 
 func main() {
