@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"net"
+	"strconv"
 	"testing"
 )
 
@@ -128,7 +129,9 @@ func TestProcessRequest(t *testing.T) {
 }
 
 func TestChallenge_Solve(t *testing.T) {
-	challenge := &Challenge{}
+	challenge := &Challenge{
+		Address: GetAvailablePort(t),
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -181,7 +184,7 @@ func TestChallenge_Solve(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a new connection for each test case
-			conn, err := net.Dial("tcp", "localhost:5001")
+			conn, err := net.Dial("tcp", challenge.Address)
 			if err != nil {
 				t.Fatalf("Failed to connect to server: %v", err)
 			}
@@ -252,4 +255,16 @@ func equalJSONMaps(a, b map[string]interface{}) bool {
 	}
 
 	return true
+}
+
+func GetAvailablePort(t *testing.T) string {
+	t.Helper()
+	listener, err := net.Listen("tcp", ":0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+
+	port := strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)
+	return ":" + string(port)
 }

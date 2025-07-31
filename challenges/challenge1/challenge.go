@@ -28,7 +28,9 @@ type Response struct {
 }
 
 // Challenge implements the Challenge interface
-type Challenge struct{}
+type Challenge struct {
+	Address string
+}
 
 // Name returns the name of the challenge
 func (c *Challenge) Name() string {
@@ -37,13 +39,13 @@ func (c *Challenge) Name() string {
 
 // Solve implements the solution for the challenge
 func (c *Challenge) Solve(ctx context.Context) error {
-	listener, err := net.Listen("tcp4", ":5001")
+	listener, err := net.Listen("tcp4", c.Address)
 	if err != nil {
-		return fmt.Errorf("failed to listen on port 5001: %v", err)
+		return fmt.Errorf("failed to listen on %s: %v", c.Address, err)
 	}
 	defer listener.Close()
 
-	fmt.Println("Prime number JSON server listening on port 5001...")
+	fmt.Printf("Echo server listening on %s...\n", c.Address)
 	fmt.Println("Press Ctrl+C to stop the server")
 
 	ctx, cancel := context.WithCancel(ctx)
@@ -219,5 +221,5 @@ func (c *Challenge) createMalformedResponse() string {
 }
 
 func init() {
-	challenges.Register(1, &Challenge{})
+	challenges.Register(1, &Challenge{Address: ":5001"})
 }

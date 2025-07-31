@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/binary"
 	"net"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -130,7 +131,9 @@ func TestCalculateMean(t *testing.T) {
 }
 
 func TestChallenge_Solve(t *testing.T) {
-	challenge := &Challenge{}
+	challenge := &Challenge{
+		Address: GetAvailablePort(t),
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -139,8 +142,6 @@ func TestChallenge_Solve(t *testing.T) {
 
 	go func() {
 		close(serverReady)
-		// Use a different port to avoid conflicts
-		// We need to modify the Solve method to accept a port parameter for testing
 		if err := challenge.Solve(ctx); err != nil {
 			select {
 			case <-ctx.Done():
@@ -157,7 +158,7 @@ func TestChallenge_Solve(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	// Test the example from the specification
-	conn, err := net.Dial("tcp", "localhost:5001")
+	conn, err := net.Dial("tcp", challenge.Address)
 	if err != nil {
 		t.Fatalf("Failed to connect to server: %v", err)
 	}
@@ -224,4 +225,16 @@ func TestChallenge_Solve(t *testing.T) {
 	if mean != 101 {
 		t.Errorf("Expected mean 101, got %d", mean)
 	}
+}
+
+func GetAvailablePort(t *testing.T) string {
+	t.Helper()
+	listener, err := net.Listen("tcp", ":0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+
+	port := strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)
+	return ":" + string(port)
 }

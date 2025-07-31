@@ -4,11 +4,14 @@ import (
 	"bufio"
 	"context"
 	"net"
+	"strconv"
 	"testing"
 )
 
 func TestChallenge_Solve(t *testing.T) {
-	challenge := &Challenge{}
+	challenge := &Challenge{
+		Address: GetAvailablePort(t),
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -36,7 +39,7 @@ func TestChallenge_Solve(t *testing.T) {
 		"Another message\n",
 	}
 
-	conn, err := net.Dial("tcp", "localhost:5001")
+	conn, err := net.Dial("tcp", challenge.Address)
 	if err != nil {
 		t.Fatalf("Failed to connect to server: %v", err)
 	}
@@ -89,4 +92,16 @@ func TestChallenge_Solve(t *testing.T) {
 			break
 		}
 	}
+}
+
+func GetAvailablePort(t *testing.T) string {
+	t.Helper()
+	listener, err := net.Listen("tcp", ":0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+
+	port := strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)
+	return ":" + string(port)
 }
