@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"sort"
 	"strconv"
+	"strings"
 	"syscall"
 
 	"github.com/blckfalcon/protohackers/challenges"
@@ -30,19 +32,27 @@ func main() {
 	}
 
 	fmt.Println("\nAvailable Challenges:")
-	for id, challenge := range registry {
-		fmt.Printf("%d: %s\n", id, challenge.Name())
+	ids := make([]int, 0, len(registry))
+	for id := range registry {
+		ids = append(ids, id)
+	}
+	sort.Ints(ids)
+
+	for _, id := range ids {
+		fmt.Printf("%d: %s\n", id, registry[id].Name())
 	}
 
-	// Get user selection
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print("\nSelect a challenge to run (enter number): ")
-	input, _ := reader.ReadString('\n')
-	input = input[:len(input)-1] // Remove newline
-
-	challengeID, err := strconv.Atoi(input)
+	input, err := reader.ReadString('\n')
 	if err != nil {
-		fmt.Printf("Invalid input: %v\n", err)
+		fmt.Printf("Input error: %v\n", err)
+		return
+	}
+
+	challengeID, err := strconv.Atoi(strings.TrimSpace(input))
+	if err != nil {
+		fmt.Printf("Invalid input\n")
 		return
 	}
 
@@ -55,11 +65,9 @@ func main() {
 	fmt.Printf("\nRunning Challenge %d: %s\n", challengeID, challenge.Name())
 	fmt.Println("=============================")
 
-	// Create a context that can be cancelled with Ctrl+C
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Set up signal handler for graceful shutdown
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
@@ -69,7 +77,7 @@ func main() {
 		cancel()
 	}()
 
-	if err := challenge.Solve(ctx); err != nil {
-		fmt.Printf("Error running challenge: %v\n", err)
+	if err := challenge.Solve(ctx); err != nil && ctx.Err() == nil {
+		fmt.Printf("Challenge error: %v\n", err)
 	}
 }
