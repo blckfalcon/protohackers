@@ -18,6 +18,7 @@ import (
 	_ "github.com/blckfalcon/protohackers/challenges/challenge3"
 	_ "github.com/blckfalcon/protohackers/challenges/challenge4"
 	_ "github.com/blckfalcon/protohackers/challenges/challenge5"
+	_ "github.com/blckfalcon/protohackers/challenges/challenge6"
 )
 
 func main() {
